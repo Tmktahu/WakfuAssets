@@ -595,12 +595,14 @@ const assembleSpellDefData = () => {
   let definitionData = [];
   classEncyclopediaBreakdown.forEach((classEntry) => {
     let targetClassId = classEntry.classId;
+    let targetClassName = classEntry.className.toLowerCase();
 
     classEntry.spells.forEach((spell) => {
       definitionData.push({
         id: spell.spellId,
         name: spell.spellName,
         classId: targetClassId,
+        className: targetClassName,
         category: spell.category,
       });
     })
@@ -612,4 +614,4 @@ const assembleSpellDefData = () => {
 }
 
 // getHtmlData(); // actually does the scraping
-// assembleSpellDefData(); // outputs the massive const we have up there into a usable format
+assembleSpellDefData(); // outputs the massive const we have up there into a usable format
