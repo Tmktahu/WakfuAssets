@@ -418,7 +418,7 @@ const parseEquipEffects = (effectsContainerElem) => {
     const number = parseInt(movementPointsMatch[1]);
     effects.push({
       id: 'movementPoints',
-      rawId: 191,
+      rawId: 41,
       text: 'Movement Points',
       value: number,
       negative: number < 0 ? true : undefined,
@@ -432,7 +432,7 @@ const parseEquipEffects = (effectsContainerElem) => {
     const number = parseInt(xelorMovementPointsMatch[1]);
     effects.push({
       id: 'movementPoints',
-      rawId: 191,
+      rawId: 41,
       text: 'Movement Points',
       value: number,
       negative: number < 0 ? true : undefined,
@@ -445,8 +445,8 @@ const parseEquipEffects = (effectsContainerElem) => {
   if (elementalResistanceMatch) {
     const number = parseInt(elementalResistanceMatch[1]);
     effects.push({
-      id: number < 0 ? 'elementalResistanceReduction' : 'elementalResistance',
-      rawId: number < 0 ? 90 : 80,
+      id: 'elementalResistance',
+      rawId: 80,
       text: 'Elemental Resistance',
       value: number,
       negative: number < 0 ? true : undefined,
@@ -586,7 +586,7 @@ const parseEquipEffects = (effectsContainerElem) => {
     const number = parseInt(lockFromLevelMatch[1]);
     effects.push({
       id: 'lockFromLevel',
-      rawId: 10010,
+      rawId: 10011,
       text: 'Lock from Level',
       value: number,
       negative: number < 0 ? true : undefined,
@@ -702,7 +702,7 @@ HANDLED - Ouginak - Raiding - -10% damage inflicted, 30% armor received, 400% le
 HANDLED - Ouginak - Ardor - -1 MP
 HANDLED - Ouginak - Digestion - -20% indirect damage inflicted
 HANDLED - Ouginak - Relentless - 20 force of will, -10% damage inflicted
-HANDLED - Ougnak - Growlight - 300% level lock
+HANDLED - Ouginak - Growlight - 300% level lock
 NOT HANDLING - Foggernaut - Advanced Mechanics - 20% direct damage inflicted
 HANDLED - Foggernaut - Heavy Duty Covering - 600% level HP
 HANDLED - Foggernaut - Light Alloy - -1 MP
