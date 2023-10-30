@@ -16,7 +16,7 @@ const spellData = [
   { className: 'Iop', classId: 8, spells: [] },
   { className: 'Cra', classId: 9, spells: [] },
   { className: 'Sadida', classId: 10, spells: [] },
-  { className: 'Sacrieur', classId: 11, spells: [] },
+  { className: 'Sacrier', classId: 11, spells: [] },
   { className: 'Pandawa', classId: 12, spells: [] },
   { className: 'Rogue', classId: 13, spells: [] },
   { className: 'Masqueraider', classId: 14, spells: [] },
@@ -182,7 +182,7 @@ const parseEquipEffects = (effectsContainerElem) => {
   }
 
   // Armor Received
-  const armorReceivedPattern = /<div class="ak-title">\n\s+(-?\d+)% Armor received/;
+  const armorReceivedPattern = /<div class="ak-title">\n\s+(?:<span.+span> ?)?(-?\d+)% Armor received/;
   const armorReceivedMatch = text.match(armorReceivedPattern);  
   if (armorReceivedMatch) {
     const number = parseInt(armorReceivedMatch[1]);
@@ -196,7 +196,7 @@ const parseEquipEffects = (effectsContainerElem) => {
   }
 
   // Armor Given
-  const armorGivenPattern = /<div class="ak-title">\n\s+(-?\d+)% Armor given/;
+  const armorGivenPattern = /<div class="ak-title">\n\s+(?:<span.+span> )?(-?\d+)% Armor given/;
   const armorGivenMatch = text.match(armorGivenPattern);  
   if (armorGivenMatch) {
     const number = parseInt(armorGivenMatch[1]);
@@ -209,8 +209,22 @@ const parseEquipEffects = (effectsContainerElem) => {
     })
   }
 
+  // Masqueraider armor Given because ankama can't reliably stick to a pattern for stats
+  const masqArmorGivenPattern = /<div class="ak-title">\n\s+(?:<span.+span> ?)?(?:-?\d+)% Armor received, (-?\d+)% Armor given/;
+  const masqArmorGivenMatch = text.match(masqArmorGivenPattern);  
+  if (masqArmorGivenMatch) {
+    const number = parseInt(masqArmorGivenMatch[1]);
+    effects.push({
+      id: 'armorGiven',
+      rawId: 10000,
+      text: '% Armor Given',
+      value: number,
+      negative: number < 0 ? true : undefined,
+    })
+  }
+
   // Damage Inflicted
-  const damageInflictedPattern = /<div class="ak-title">\n\s+(?:<span.+span> )?(-?\d+)% D?d?amage inflicted/;
+  const damageInflictedPattern = /<div class="ak-title">\n\s+(?:<span.+span> )?(-?\d+)% D?d?amage inflicted(?! from | in | by )/;
   const damageInflictedMatch = text.match(damageInflictedPattern);  
   if (damageInflictedMatch) {
     const number = parseInt(damageInflictedMatch[1]);
@@ -224,7 +238,7 @@ const parseEquipEffects = (effectsContainerElem) => {
   }
 
   // Damage Inflicted
-  const indirectDamageInflictedPattern = /<div class="ak-title">\n\s+(?:<span.+span> )?(-?\d+)% I?i?ndirect D?d?amage I?i?nflicted/;
+  const indirectDamageInflictedPattern = /<div class="ak-title">\n\s+(?:<span.+span> )?(-?\d+)% (?:I?i?ndirect D?d?amage I?i?nflicted|I?i?ndirect D?d?amage)/;
   const indirectDamageInflictedMatch = text.match(indirectDamageInflictedPattern);  
   if (indirectDamageInflictedMatch) {
     const number = parseInt(indirectDamageInflictedMatch[1]);
@@ -238,7 +252,7 @@ const parseEquipEffects = (effectsContainerElem) => {
   }
 
   // Range
-  const rangePattern = /<div class="ak-title">\n\s+(?:<span.+span> )?(-?\d+) Range/;
+  const rangePattern = /<div class="ak-title">\n\s+(?:<span.+span> )?(-?\d+) Range(?! to their movement spells)/;
   const rangeMatch = text.match(rangePattern);  
   if (rangeMatch) {
     const number = parseInt(rangeMatch[1]);
@@ -308,7 +322,7 @@ const parseEquipEffects = (effectsContainerElem) => {
   }
 
   // Movement points
-  const movementPointsPattern = /<div class="ak-title">\n\s+(?:<span.+span> ?)?(-?\d+) MP/;
+  const movementPointsPattern = /<div class="ak-title">\n\s+(?:<span.+span> ?)?(-?\d+) MP(?! for a )/;
   const movementPointsMatch = text.match(movementPointsPattern);  
   if (movementPointsMatch) {
     const number = parseInt(movementPointsMatch[1]);
@@ -336,7 +350,7 @@ const parseEquipEffects = (effectsContainerElem) => {
   }
 
   // Elemental Resistance
-  const elementalResistancePattern = /<div class="ak-title">\n\s+(?:<span.+span> ?)?(-?\d+) E?e?lemental R?r?esistance/;
+  const elementalResistancePattern = /<div class="ak-title">\n\s+(?:<span.+span> ?)?(-?\d+) E?e?lemental R?r?esistance(?! when the Pandawa carries)/;
   const elementalResistanceMatch = text.match(elementalResistancePattern);  
   if (elementalResistanceMatch) {
     const number = parseInt(elementalResistanceMatch[1]);
@@ -391,8 +405,36 @@ const parseEquipEffects = (effectsContainerElem) => {
     })
   }
 
+  // Dodge
+  const dodgePattern = /<div class="ak-title">\n\s+(?:<span.+span> )?(-?\d+) Dodge/;
+  const dodgeMatch = text.match(dodgePattern);  
+  if (dodgeMatch) {
+    const number = parseInt(dodgeMatch[1]);
+    effects.push({
+      id: 'dodge',
+      rawId: 175,
+      text: 'Dodge',
+      value: number,
+      negative: number < 0 ? true : undefined,
+    })
+  }
+
+  // Dodge
+  const percentDodgePattern = /<div class="ak-title">\n\s+(?:<span.+span> )?(?:- )?(-?\d+)% Dodge/;
+  const percentDodgeMatch = text.match(percentDodgePattern);  
+  if (percentDodgeMatch) {
+    const number = parseInt(percentDodgeMatch[1]);
+    effects.push({
+      id: 'percentDodge',
+      rawId: 10012,
+      text: '% Dodge',
+      value: number,
+      negative: number < 0 ? true : undefined,
+    })
+  }
+
   // Dodge Override
-  const dodgeOverridePattern = /<div class="ak-title">\n\s+(?:<span.+span> )?Sets Dodge to (-?\d+) at start of fight/;
+  const dodgeOverridePattern = /<div class="ak-title">\n\s+(?:<span.+span> )?(?:- )?(?:Sets Dodge to (-?\d+) at start of fight|The Cra's Dodge is reduced to (-?\d+))/;
   const dodgeOverrideMatch = text.match(dodgeOverridePattern);  
   if (dodgeOverrideMatch) {
     const number = parseInt(dodgeOverrideMatch[1]);
@@ -406,7 +448,7 @@ const parseEquipEffects = (effectsContainerElem) => {
   }
 
   // Health points from level
-  const healthPointsFromLevelPattern = /<div class="ak-title">\n\s+(?:<span.+span> )?(?:- )?(-?\d+)% of their level/;
+  const healthPointsFromLevelPattern = /<div class="ak-title">\n\s+(?:<span.+span> )?(?:- )?(-?\d+)(?:% of their level|% of the .+'s level|% of level as HP|% of level as max HP)/;
   const healthPointsFromLevelMatch = text.match(healthPointsFromLevelPattern);  
   if (healthPointsFromLevelMatch) {
     const number = parseInt(healthPointsFromLevelMatch[1]);
@@ -419,8 +461,50 @@ const parseEquipEffects = (effectsContainerElem) => {
     })
   }
 
+  // Feca Health points from level, because they have a typo in there
+  const fecaHealthPointsFromLevelPattern = /<div class="ak-title">\n\s+(?:<span.+span> )?(?:- )?(-?\d+) of level (?:<span.+span>)/;
+  const fecaHealthPointsFromLevelMatch = text.match(fecaHealthPointsFromLevelPattern);  
+  if (fecaHealthPointsFromLevelMatch) {
+    const number = parseInt(fecaHealthPointsFromLevelMatch[1]);
+    effects.push({
+      id: 'healthPointsFromLevel',
+      rawId: 10006,
+      text: 'Health Points from Level',
+      value: number,
+      negative: number < 0 ? true : undefined,
+    })
+  }
+
+  // Dodge from level
+  const dodgeFromLevelPattern = /<div class="ak-title">\n\s+(?:<span.+span> )?(?:- )?Dodge boost: (-?\d+)% of level/;
+  const dodgeFromLevelMatch = text.match(dodgeFromLevelPattern);  
+  if (dodgeFromLevelMatch) {
+    const number = parseInt(dodgeFromLevelMatch[1]);
+    effects.push({
+      id: 'dodgeFromLevel',
+      rawId: 10010,
+      text: 'Dodge from Level',
+      value: number,
+      negative: number < 0 ? true : undefined,
+    })
+  }
+
+  // Lock from level
+  const lockFromLevelPattern = /<div class="ak-title">\n\s+(?:<span.+span> )?(?:- )?(-?\d+)% of level as Lock/;
+  const lockFromLevelMatch = text.match(lockFromLevelPattern);  
+  if (lockFromLevelMatch) {
+    const number = parseInt(lockFromLevelMatch[1]);
+    effects.push({
+      id: 'lockFromLevel',
+      rawId: 10010,
+      text: 'Lock from Level',
+      value: number,
+      negative: number < 0 ? true : undefined,
+    })
+  }
+
   // Lock Override. only used by enripsa atm
-  const lockOverridePattern = /<div class="ak-title">\n\s+(?:<span.+span> )?The Eniripsa's Lock goes to (-?\d+) at start of fight/;
+  const lockOverridePattern = /<div class="ak-title">\n\s+(?:<span.+span> )?(?:The Eniripsa's Lock goes to (-?\d+) at start of fight|At start of combat, Lock is reduced to (-?\d+))/;
   const lockOverrideMatch = text.match(lockOverridePattern);  
   if (lockOverrideMatch) {
     const number = parseInt(lockOverrideMatch[1]);
@@ -433,6 +517,33 @@ const parseEquipEffects = (effectsContainerElem) => {
     })
   }
 
+  // Lock Doubled. only used by masq atm
+  const lockDoubledPattern = /<div class="ak-title">\n\s+(?:<span.+span> )?(?:- )?Lock doubled/;
+  const lockDoubledMatch = text.match(lockDoubledPattern);  
+  if (lockDoubledMatch) {
+    // const number = parseInt(lockDoubledMatch[1]);
+    effects.push({
+      id: 'lockDoubled',
+      rawId: 10009,
+      text: 'Lock Doubled',
+      value: 2,
+    })
+  }
+
+  // Percent Health Points
+  const percentHealthPointsPattern = /<div class="ak-title">\n\s+(?:<span.+span> ?)?(-?\d+)% Health Points/;
+  const percentHealthPointsMatch = text.match(percentHealthPointsPattern);  
+  if (percentHealthPointsMatch) {
+    const number = parseInt(percentHealthPointsMatch[1]);
+    effects.push({
+      id: 'percentHealthPoints',
+      rawId: 10008,
+      text: '% Health Points',
+      value: number,
+      negative: number < 0 ? true : undefined,
+    })
+  }
+
   return effects;
 }
 
@@ -440,12 +551,12 @@ const parseEquipEffects = (effectsContainerElem) => {
 /*
 
 HANDLED - Feca - Rocky Skin - 30% Block
-???????????Feca - Eye for Eye - -50% indirect damage
+NOT HANDLING - Feca - Eye for Eye - -50% indirect damage
 HANDLED - Feca - Combat Armor - -100% armor received
 HANDLED - Feca - The Best Defense is an Attack - 10% damage inflicted
 HANDLED - Feca - If You Want Peace, Prepare for War - -100% armor given, 25% damage inflicted
 HANDLED - Feca - Line - 1 Range
-???????????Feca - Herd Protector - -20% damage inflicted, +300% level HP
+HANDLED - Feca - Herd Protector - -20% damage inflicted, +300% level HP
 HANDLED - Osamodas - Animal Devotion - -25% damage inflicted, -25% heals performed
 HANDLED - Osamodas - Animal Sacrifice - 3 WP
 HANDLED - Osamodas - Animal Synergy - -20% damage inflicted
@@ -453,7 +564,7 @@ NOT HANDLING - Osamodas - Taur Strength - 30% single target damage inflicted, -1
 HANDLED - Osamodas - Summoning Warrior - 20% damage inflicted
 HANDLED - Osamodas - Crobak Vision - 2 Range
 HANDLED - Osamodas - Animal Sharing - -100 elemental resistance
-NOT HANDLING = Enutrof - Treasure Tracker - 30% dodge
+HANDLED - Enutrof - Treasure Tracker - 30% dodge
 HANDLED - Enutrof - Enutrof Force of Will - 20 force of will
 HANDLED - Enutrof - Credit Interest - 10% damage inflicted
 HANDLED - Sram - Trap Master - 4 Control
@@ -466,47 +577,47 @@ HANDED - Ecaflip - Heads, I Win - -100% dodge
 HANDLED - Eniripsa - Vital Climax - 30% heals received
 HANDLED - Eniripsa - All For Me - 800% level HP
 HANDLED - Eniripsa - Wind Elixir - -100% lock
-Iop - Virility - 350% level HP
-Iop - Seismic Rift - 50/200 dodge
-Iop - Tormentor - 15% distance damage inflicted
-Cra - Untouchable Scout - 30 force of will, -100% dodge
-Sadida - Knowledge of Dolls - 3 Control
-Sadida - Harmless Toxin - 20% heals performed, -10% damage inflicted
-Sadida - Venomous - 20 force of will, 50% indirect damage inflicted
-Sadida - Common Ground - 50% armor given
-Sacrier - Blood Flow - -50% armor received
-Sacrier - Sacrier's Heart - -2 Range
-Sacrier - Wakfu Pact - 400% level HP
-Sacrier - Placidity - -2 WP
-Sacrier - Blood Pact - -30% HP
-Sacrier - Mobility - -100% lock
-Sacrier - Tattooed Blood - 800% level HP
-Pandawa - Cocktail - 20% heals performed, -10% damage inflicted
-Pandawa - Poisoned Chalice - 15% damage inflicted, -50 elemental resistance
-Pandawa - Pandemic - -10% damage inflicted
-Masqueraider - Masked Gaze - 1 MP
-Masqueraider - Pirouette - 25% side damage inflicted, -25% frontal damage inflicted
-Masqueraider - Erosion - 25% damage inflicted
-Masqueraider - Brute - 25% damage inflicted, -40% armor given, -40% armor received
-Masqueraider - Anchor - +100% lock, -1 MP
-Masqueraider - Fancy Footwork - 200% level dodge, -50 elemental resistance
-Masqueraider - Debuff Pushes - 10 force of will
-Ouginak - Exhaustion - 50% indirect damage inflicted, -2 Range
-Ouginak - Cunning Fang - 20% block
-Ouginak - Canine Art - -20% indirect damage inflicted
-Ouginak - Tailing - 20% rear damage inflicted, 1 MP
-Ouginak - Canine Energy - 3 WP
-Ouginak - Fury - -1 WP
-Ouginak - Raiding - -10% damage inflicted, 30% armor received, 400% level HP
-Ouginak - Ardor - -1 MP
-Ouginak - Digestion - -20% indirect damage inflicted
-Ouginak - Relentless - 20 force of will, -10% damage inflicted
-Ougnak - Growlight - 300% level lock
-Foggernaut - Advanced Mechanics - 20% direct damage inflicted
-Foggernaut - Heavy Duty Covering - 600% level HP
-Foggernaut - Light Alloy - -1 MP
-Foggernaut - Earthy Assistance - -30% armor received
-Foggernaut - Robotic Strategy - -20% indirect damage inflicted
-Huppermage - Quadramental Absorption - 20 force of will
+HANDLED - Iop - Virility - 350% level HP
+HANDLED - Iop - Seismic Rift - 50/200 dodge
+HANDLED - Iop - Tormentor - 15% distance damage inflicted
+Handled - Cra - Untouchable Scout - 30 force of will, -100% dodge
+Handled - Sadida - Knowledge of Dolls - 3 Control
+HANDLED - Sadida - Harmless Toxin - 20% heals performed, -10% damage inflicted
+HANDLED - Sadida - Venomous - 20 force of will, 50% indirect damage inflicted
+HANDLED - Sadida - Common Ground - 50% armor given
+HANDLED - Sacrier - Blood Flow - -50% armor received
+HANDLED - Sacrier - Sacrier's Heart - -2 Range
+HANDLED - Sacrier - Wakfu Pact - 400% level HP
+HANDLED - Sacrier - Placidity - -2 WP
+HANDLED - Sacrier - Blood Pact - -30% HP
+HANDLED - Sacrier - Mobility - -100% lock
+HANDLED - Sacrier - Tattooed Blood - 800% level HP
+HANDLED - Pandawa - Cocktail - 20% heals performed, -10% damage inflicted
+HANDLED - Pandawa - Poisoned Chalice - 15% damage inflicted, -50 elemental resistance
+HANDLED - Pandawa - Pandemic - -10% damage inflicted
+HANDLED - Masqueraider - Masked Gaze - 1 MP
+NOT HANDLING - Masqueraider - Pirouette - 25% side damage inflicted, -25% frontal damage inflicted
+HANDLED - Masqueraider - Erosion - -25% damage inflicted
+HANDLED - Masqueraider - Brute - 25% damage inflicted, -40% armor given, -40% armor received
+HANDLED - Masqueraider - Anchor - +100% lock, -1 MP
+HANDLED - Masqueraider - Fancy Footwork - 200% level dodge, -50 elemental resistance
+HANDLED - Masqueraider - Debuff Pushes - 10 force of will
+HANDLED - Ouginak - Exhaustion - 50% indirect damage inflicted, -2 Range
+HANDLED - Ouginak - Cunning Fang - 20% block
+HANDLED - Ouginak - Canine Art - -20% indirect damage inflicted
+HANDLED - Ouginak - Tailing - 20% rear damage inflicted, 1 MP
+HANDLED - Ouginak - Canine Energy - 3 WP
+HANDLED - Ouginak - Fury - -1 WP
+HANDLED - Ouginak - Raiding - -10% damage inflicted, 30% armor received, 400% level HP
+HANDLED - Ouginak - Ardor - -1 MP
+HANDLED - Ouginak - Digestion - -20% indirect damage inflicted
+HANDLED - Ouginak - Relentless - 20 force of will, -10% damage inflicted
+HANDLED - Ougnak - Growlight - 300% level lock
+NOT HANDLING - Foggernaut - Advanced Mechanics - 20% direct damage inflicted
+HANDLED - Foggernaut - Heavy Duty Covering - 600% level HP
+HANDLED - Foggernaut - Light Alloy - -1 MP
+HANDLED - Foggernaut - Earthy Assistance - -30% armor received
+HANDLED - Foggernaut - Robotic Strategy - -20% indirect damage inflicted
+HANDLED - Huppermage - Quadramental Absorption - 20 force of will
 
 */
