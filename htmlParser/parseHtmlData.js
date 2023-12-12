@@ -6,12 +6,15 @@ const jsdom = require('jsdom');
 const { JSDOM } = jsdom;
 
 const fs = require('fs');
-const jsonData = fs.readFileSync('spell_defs.json', 'utf8');
-const classEncyclopediaBreakdown = JSON.parse(jsonData);
+const jsonSpellData = fs.readFileSync('spell_defs.json', 'utf8');
+const classEncyclopediaBreakdown = JSON.parse(jsonSpellData);
+
+const jsonStatesData = fs.readFileSync('states.json', 'utf8');
+const statesEncyclopediaBreakdown = JSON.parse(jsonStatesData);
 
 //////// Scraping Logic
 
-const getHtmlData = async () => {
+const getHtmlSpellData = async () => {
   for (let classIndex in classEncyclopediaBreakdown) {
     let classEntry = classEncyclopediaBreakdown[classIndex];
     let targetClassDirectory = 'spellData/' + classEntry.className.toLowerCase() + '/';
@@ -81,7 +84,6 @@ const assembleSpellDefData = () => {
 ///////// Parsing Logic
 
 // So the theory here is that we iterate over all html blocks and parse out the data we want
-let topDirectory = './spellData/';
 const spellData = [
   { className: 'Feca', classId: 1, spells: [] },
   { className: 'Osamodas', classId: 2, spells: [] },
@@ -103,7 +105,8 @@ const spellData = [
   { className: 'Huppermage', classId: 19, spells: [] },
 ];
 
-const processData = async () => {
+const processSpellData = async () => {
+  let topDirectory = './spellData/';
   const directoryContents = await fs.promises.readdir(topDirectory);
 
   for (const entry of directoryContents) {
@@ -314,7 +317,7 @@ const parseEquipEffects = (effectsContainerElem) => {
   }
 
   // Damage Inflicted
-  const damageInflictedPattern = /<div class="ak-title">\n\s+(?:<span.+span> )?(-?\d+)% D?d?amage inflicted(?! from | in | by )/;
+  const damageInflictedPattern = /<div class="ak-title">\n\s+(?:<span.+span> )?(?:- )(-?\d+)% D?d?amage inflicted(?! from | in | by )/;
   const damageInflictedMatch = text.match(damageInflictedPattern);  
   if (damageInflictedMatch) {
     const number = parseInt(damageInflictedMatch[1]);
@@ -327,7 +330,7 @@ const parseEquipEffects = (effectsContainerElem) => {
     })
   }
 
-  // Damage Inflicted
+  // Indirect Damage Inflicted
   const indirectDamageInflictedPattern = /<div class="ak-title">\n\s+(?:<span.+span> )?(-?\d+)% (?:I?i?ndirect D?d?amage I?i?nflicted|I?i?ndirect D?d?amage)/;
   const indirectDamageInflictedMatch = text.match(indirectDamageInflictedPattern);  
   if (indirectDamageInflictedMatch) {
@@ -712,10 +715,239 @@ HANDLED - Huppermage - Quadramental Absorption - 20 force of will
 
 */
 
-///////// End Parsing Logic
+///////// End Spell Parsing Logic
+
+
+const stateData = [];
+const stateTranslationData = {en: {}, es: {}, fr: {}};
+
+const getHtmlStatesData = async () => {
+  for (let stateIndex in statesEncyclopediaBreakdown) {
+    let stateEntry = statesEncyclopediaBreakdown[stateIndex];
+    let targetStateDirectory = 'statesData/' + stateEntry.definition.id + '/';
+
+    // first we make any missing directories. we assume the /statesData directory already exists.
+    if(!fs.existsSync(targetStateDirectory)) {
+      fs.mkdir(targetStateDirectory, (error) => {
+        if (error) {
+          console.log(error);
+        }
+      });
+    }
+
+    let localeKeys = Object.keys(stateTranslationData)
+    for(localeIndex in localeKeys) {
+      let currentLocale = localeKeys[localeIndex];
+
+      for(let levelCounter = 1; levelCounter < 7; levelCounter++) {
+        let baseLinkerUrl = `https://www.wakfu.com/en/linker/state?l=${currentLocale}&id=${stateEntry.definition.id}&level=${levelCounter}`
+        let targetFilePath = targetStateDirectory + currentLocale + '_' + stateEntry.definition.id + '_level_' + levelCounter + '.html';
+
+        let fileExists = await fs.existsSync(targetFilePath);
+        if(process.argv.includes('skip-existing') && fileExists) {
+          continue;
+        }
+
+        let response = await fetch(baseLinkerUrl, {
+          "headers": {
+            "x-pjax": "true",
+            "x-pjax-container": ".ak-spells-panel",
+            "x-requested-with": "XMLHttpRequest"
+          },
+        });
+
+        let htmlText = await response.text();
+
+        await fs.writeFile(targetFilePath, htmlText, () => {});
+        console.log('wrote', targetFilePath)
+
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    }
+  }
+}
+
+const processStatesData = async () => {
+  let topDirectory = './statesData/';
+  const directoryContents = await fs.promises.readdir(topDirectory);
+
+  for (const entry of directoryContents) {
+    const entryPath = path.join(topDirectory, entry);
+    const entryStats = await fs.promises.stat(entryPath);
+
+    // let targetClassData = spellData.find((dataEntry) => {
+    //   return dataEntry.className.toLocaleLowerCase() === entry;
+    // })
+
+    if (entryStats.isDirectory()) {
+      await processStateDirectory(entryPath);
+    }
+  }
+
+  await writeStateDataToFile(stateData);
+  await writeStateTranslationDataToFile(stateTranslationData);
+}
+
+const processStateDirectory = async (targetDirectory) => {
+  const files = await fs.promises.readdir(targetDirectory);
+
+  for (const file of files) {
+    const stateId = path.basename(targetDirectory);
+    const stateLevel = file.match(/level_(\d)/)[1];
+    const filePath = path.join(targetDirectory, file);
+    
+    await processStateFile(filePath, stateId, stateLevel);
+  }
+}
+
+const processStateFile = async (filePath, stateId, stateLevel) => {
+  const data = await fs.promises.readFile(filePath, 'utf8');
+
+  const { window } = new JSDOM(data);
+  let document = window.document;
+
+  // we do this regardless because it also handles translations and I'm too lazy to break that out
+  let newStateData = assembleStateData(document, filePath, stateId, stateLevel);
+
+  let existingStateData = stateData.find((state) => state.id === stateId);
+  if(existingStateData) {
+    console.log('we found existing state data')
+    mergeStateData(existingStateData, newStateData);
+  } else {
+    // console.log('newSpellData', newSpellData)
+    // newSpellData.spellName = spellName;
+
+    // console.log(newStateData)
+
+    // we only push if we have a new entry
+    stateData.push(newStateData);
+  }
+}
+
+const assembleStateData = (document, filePath, stateId, stateLevel) => {
+  console.log(filePath)
+  let localeRegex = /\\\d+\\(\w\w)_/
+  const localeMatches = filePath.match(localeRegex);
+  let currentLocale = localeMatches[1];
+
+  let newStateData = { id: stateId, descriptionData:[] };
+
+  stateTranslationData[currentLocale][`${stateId}_name`] = document.querySelector('.ak-name').innerHTML;
+  newStateData.name = `${stateId}_name`;
+
+  document.querySelectorAll('.ak-title').forEach((elem, index) => {
+    let spaceRegex = /(\s+)/;
+    const matches = elem.innerHTML.match(spaceRegex);
+
+    // we can tell if a line is indented by the number of spaces it starts with. 20 spaces is not indented. 24 is indented.
+    let spaceCount = matches[0].split(" ").length - 1;
+    
+    let lineData = {}
+    lineData.indented = spaceCount !== 20;
+
+    // here we handle the image elements and some other cleanup stuff
+    let initialText = elem.innerHTML.trim()
+      .replaceAll('<span class=\"picto\"><img src=\"http://staticns.ankama.com/wakfu/portal/game/element/b.png\"></span>', '')
+      .replaceAll('<span class=\"picto\"><img src=\"http://staticns.ankama.com/wakfu/portal/game/element/PHYSICAL.png\"></span>', '{img_physical}')
+      .replaceAll('<span class=\"picto\"><img src=\"http://staticns.ankama.com/wakfu/portal/game/element/ecnbi.png\"></span>', '{img_ecnbi}')
+      .replaceAll('<span class=\"picto\"><img src=\"http://staticns.ankama.com/wakfu/portal/game/element/ecnbr.png\"></span>', '{img_ecnbr}')
+      .replaceAll('<span class=\"picto\"><img src=\"http://staticns.ankama.com/wakfu/portal/game/element/ally.png\"></span>', '{img_ally}')
+      .replaceAll('<span class=\"picto\"><img src=\"http://staticns.ankama.com/wakfu/portal/game/element/enemy.png\"></span>', '{img_enemy}')
+      .replaceAll('<span class=\"picto\"><img src=\"http://staticns.ankama.com/wakfu/portal/game/element/LIGHT.png\"></span>', '{img_light}')
+      .replaceAll('<span class=\"picto\"><img src=\"http://staticns.ankama.com/wakfu/portal/game/element/CIRCLERING.png\"></span>', '{img_circling}')
+      .replaceAll('<span class=\"picto\"><img src=\"http://staticns.ankama.com/wakfu/portal/game/element/FIRE.png\"></span>', '{img_fire}')
+      .replaceAll('<span class=\"picto\"><img src=\"http://staticns.ankama.com/wakfu/portal/game/element/EARTH.png\"></span>', '{img_earth}')
+      .replaceAll('<span class=\"picto\"><img src=\"http://staticns.ankama.com/wakfu/portal/game/element/WATER.png\"></span>', '{img_water}')
+      .replaceAll('<span class=\"picto\"><img src=\"http://staticns.ankama.com/wakfu/portal/game/element/AIR.png\"></span>', '{img_air}')
+      .replaceAll('&lt;', '<').replaceAll('&gt;', '>');
+
+    // Here we need to handle links to other states and whatnot, called 'linkers'
+    let deLinkeredText = initialText;
+    if(initialText.includes('ak-linker')) {
+      let linker = elem.querySelector('.ak-linker')
+
+      let linkerDataRegex = /"linker-query-datas":({"l":"\w\w","id":".+","level":"\d+"})/;
+      const linkerMatches = initialText.match(linkerDataRegex);
+
+      lineData.linker = true;
+      deLinkeredText = linker.innerHTML
+      lineData.linkerData = JSON.parse(linkerMatches[1]);
+      lineData.linkerData.id = lineData.linkerData.id.replaceAll('.', '').replaceAll(',', '')
+    } else {
+      deLinkeredText = initialText
+    }
+
+    // Here we need to strip out the numbers, store them under keys, and replace the text with those keys for later insertion
+    let numberRegex = /(\d+.\d+|\d+)/g;
+    let numberMatches = deLinkeredText.match(numberRegex);
+    let denumberedText = deLinkeredText;
+
+    if(numberMatches) {
+      for(let numIndex = 0; numIndex < numberMatches.length; numIndex++) {
+        lineData[`num_${numIndex}`] = {
+          [`level_${stateLevel}`]: parseFloat(numberMatches[numIndex])
+        };
+        denumberedText = denumberedText.replace(numberMatches[numIndex], `{num_${numIndex}}`)
+      }
+    }
+
+    // we finally store the translated text along with its translation ID
+    stateTranslationData[currentLocale][`${stateId}_${index}`] = denumberedText
+    lineData.text = `${stateId}_${index}`; // this is a translation ID
+
+    newStateData.descriptionData.push(lineData)
+  })
+
+  return newStateData;
+}
+
+const mergeStateData = (existingData, newData) => {
+  // we need to merge the numerical values if the levels differ
+  // but we don't store the level...
+  // might have to use object for the values after all, at least initially
+  existingData.descriptionData.forEach((lineData, lineIndex) => {
+    if(newData.descriptionData[lineIndex]) {
+      for(let numIndex = 0; numIndex < 5; numIndex++) {
+        if(lineData[`num_${numIndex}`]) {
+          lineData[`num_${numIndex}`] = { ...lineData[`num_${numIndex}`], ...newData.descriptionData[lineIndex][`num_${numIndex}`] }
+        }
+      }
+    } else {
+      console.log('a line that doesnt exist??? uh oh')
+    }
+  })
+}
+
+const writeStateDataToFile = (jsonData) => {
+  let jsonFilePath = 'state_data.json';
+  fs.writeFile(jsonFilePath, JSON.stringify(jsonData, null, 2), (err) => {
+    if (err) {
+      console.error('Error writing JSON to file:', err);
+    } else {
+      console.log('JSON data has been written to', jsonFilePath);
+    }
+  });
+}
+
+const writeStateTranslationDataToFile = (jsonData) => {
+  Object.keys(jsonData).forEach((localeKey) => {
+    let jsonFilePath = `${localeKey}_states.json`;
+    fs.writeFile(jsonFilePath, JSON.stringify(jsonData[localeKey], null, 2), (err) => {
+      if (err) {
+        console.error('Error writing JSON to file:', err);
+      } else {
+        console.log('JSON data has been written to', jsonFilePath);
+      }
+    });
+  })
+}
 
 
 
-// getHtmlData(); // actually does the scraping
+// getHtmlSpellData(); // actually does the scraping
 // assembleSpellDefData(); // outputs the massive const we have up there into a usable format
-processData();
+// processSpellData();
+
+
+// getHtmlStatesData();
+processStatesData();

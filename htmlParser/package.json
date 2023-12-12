@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "file-saver": "^2.0.5",
     "jsdom": "^22.1.0"
   }
 }
