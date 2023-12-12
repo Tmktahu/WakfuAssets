@@ -1,4 +1,4 @@
-const baseUrl = 'https://static.ankama.com/wakfu/portal/game/item/115/';
+const baseUrl = 'https://static.ankama.com/wakfu/portal/game/item/64/';
 const urlParams = '?_pjax=.ak-spells-panel';
 
 const path = require('path');
@@ -49,10 +49,11 @@ const getItemImages = async () => {
 
 
     let imageBlob = await response.blob();
-    console.log(saveAs)
-    await FileSaver.saveAs(imageBlob, targetFilePath)
+    // console.log(imageBlob)
 
-
+    var buffer = await imageBlob.arrayBuffer();
+    buffer = Buffer.from(buffer)
+    fs.createWriteStream(targetFilePath).write(buffer);
 
     // await response.pipe(fs.createWriteStream(targetFilePath))
 
