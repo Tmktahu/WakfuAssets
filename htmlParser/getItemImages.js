@@ -1,14 +1,8 @@
 const baseUrl = 'https://static.ankama.com/wakfu/portal/game/item/64/';
-const urlParams = '?_pjax=.ak-spells-panel';
-
-const path = require('path');
-const FileSaver = require('file-saver');
 
 const fs = require('fs');
 const jsonItemData = fs.readFileSync('items.json', 'utf8');
 const itemData = JSON.parse(jsonItemData);
-
-
 
 const getItemImages = async () => {
   for(itemIndex in itemData) {
@@ -49,15 +43,10 @@ const getItemImages = async () => {
 
 
     let imageBlob = await response.blob();
-    // console.log(imageBlob)
 
     var buffer = await imageBlob.arrayBuffer();
     buffer = Buffer.from(buffer)
     fs.createWriteStream(targetFilePath).write(buffer);
-
-    // await response.pipe(fs.createWriteStream(targetFilePath))
-
-    // await fs.writeFile(targetFilePath, htmlText, () => {});
 
     await new Promise((resolve) => setTimeout(resolve, 2000));
   }
