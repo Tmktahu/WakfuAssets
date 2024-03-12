@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 const baseUrl = 'https://www.wakfu.com/en/mmorpg/encyclopedia/classes';
 const urlParams = '?_pjax=.ak-spells-panel';
 
@@ -793,8 +794,12 @@ const processStateDirectory = async (targetDirectory) => {
 
   for (const file of files) {
     const stateId = path.basename(targetDirectory);
-    const stateLevel = file.match(/level_(\d)/)[1];
+    const stateLevel = parseInt(file.match(/level_(\d)/)[1]) - 1;
     const filePath = path.join(targetDirectory, file);
+
+    if(stateLevel <= 0) {
+      continue;
+    }
     
     await processStateFile(filePath, stateId, stateLevel);
   }
@@ -811,7 +816,7 @@ const processStateFile = async (filePath, stateId, stateLevel) => {
 
   let existingStateData = stateData.find((state) => state.id === stateId);
   if(existingStateData) {
-    console.log('we found existing state data')
+    // console.log('we found existing state data')
     mergeStateData(existingStateData, newStateData);
   } else {
     // console.log('newSpellData', newSpellData)
@@ -825,7 +830,7 @@ const processStateFile = async (filePath, stateId, stateLevel) => {
 }
 
 const assembleStateData = (document, filePath, stateId, stateLevel) => {
-  console.log(filePath)
+  // console.log(filePath)
   let localeRegex = /\\\d+\\(\w\w)_/
   const localeMatches = filePath.match(localeRegex);
   let currentLocale = localeMatches[1];
@@ -896,9 +901,198 @@ const assembleStateData = (document, filePath, stateId, stateLevel) => {
     lineData.text = `${stateId}_${index}`; // this is a translation ID
 
     newStateData.descriptionData.push(lineData)
+
+    let newEffectData = parseStateEffectData(deLinkeredText, stateLevel, stateId);
+
+    if(newEffectData) {
+      if(newStateData.equipEffects) {
+        newStateData.equipEffects.push(newEffectData)
+      } else {
+        newStateData.equipEffects = [newEffectData]
+      }
+    } else {
+
+    }
   })
 
   return newStateData;
+}
+
+const parseStateEffectData = (lineText, level, stateId) => {
+  // console.log(lineText)
+  let statesToSkip = [];
+
+  // Critical Hit Pattern
+  // With this we specifically handle Influence (6026), Measure (5075), Theory of Matter (6000), 
+  // We specifically skip Berserk Critical (6009), Ambition (7115), Vital Influence (7862)
+  const infuenceCritPattern = /^(?!^.*at least ).*\b(\d+)% Critical Hit\b$/;
+  const infuenceCritMatch = lineText.match(infuenceCritPattern);
+  statesToSkip = ['6009', '7115', '7862'];
+  if (infuenceCritMatch && !statesToSkip.includes(stateId)) {
+    const number = parseInt(infuenceCritMatch[1]);
+    let effect = {
+      id: 'criticalHit',
+      rawId: 150,
+      values: {
+        [level]: number
+      },
+      negative: number < 0 ? true : false,
+    }
+    return effect;
+  }
+
+  // AP Pattern
+  // With this we specifically handle Carapace (7076) 
+  const apPattern = /(-?\d) max AP/;
+  const apMatch = lineText.match(apPattern);
+  statesToSkip = [];
+  if (apMatch && !statesToSkip.includes(stateId)) {
+    const number = parseInt(apMatch[1]);
+    let effect = {
+      id: 'actionPoints',
+      rawId: 31,
+      values: {
+        [level]: number
+      },
+      negative: number < 0 ? true : false,
+    }
+    return effect;
+  }
+
+  // Elemental Resistance Pattern
+  // With this we specifically handle Carapace (7076), Assimilation (7258), Positioning Knowledge (5444), Vivacity (6008), Blocking Expert (6037), Rebirth (6712)
+  // We specifically skip Walls (2413, 2570), Tenacity (5988), Persistence (6021), Anathar's Pact (7071, 7072, 7073)
+  const elementalResistancePattern = /(-?\d+) Elemental Resistance/;
+  const elementalResistanceMatch = lineText.match(elementalResistancePattern);
+  statesToSkip = ['2413', '2570', '5988', '6021', '7071', '7072', '7073']
+  if (elementalResistanceMatch && !statesToSkip.includes(stateId)) {
+    const number = parseInt(elementalResistanceMatch[1]);
+    let effect = {
+      id: 'elementalResistance',
+      rawId: 80,
+      values: {
+        [level]: number
+    },
+      negative: number < 0 ? true : false,
+    }
+    return effect;
+  }
+
+  // Force of Will Pattern
+  // With this we specifically handle Condemnation (5993), Devastation (5981), Secondary Devastation (6013), Clamor (6033)
+  // We specifically skip Inflexible (5073), Wakfu Pact (5370), Resolute (5990), Lightness (5991), Obstinacy (6022), Poise (6023), Cyclothymia (6030), Iron Will (7881)
+  const forceOfWillPattern = /(-?\d+) Force of Will/;
+  const forceOfWillMatch = lineText.match(forceOfWillPattern);
+  statesToSkip = ['5073', '5370', '5990', '5991', '6022', '6023', '6030', '7881'];
+  if (forceOfWillMatch && !statesToSkip.includes(stateId)) {
+    const number = parseInt(forceOfWillMatch[1]);
+    let effect = {
+      id: 'forceOfWill',
+      rawId: 177,
+      values: {
+        [level]: number
+      },
+      negative: number < 0 ? true : false,
+    }
+    return effect;
+  }
+
+  // Indirect Damage Pattern
+  // With this we specifically handle Ruin (5980), Determination (5987)
+  // We specifically skip Cyclical Ruin (6011)
+  const indirectDamagePattern = /(-?\d+)% indirect Damage/;
+  const indirectDamageMatch = lineText.match(indirectDamagePattern);
+  statesToSkip = ['6011'];
+  if (indirectDamageMatch && !statesToSkip.includes(stateId)) {
+    const number = parseInt(indirectDamageMatch[1]);
+    let effect = {
+      id: 'indirectDamageInflicted',
+      rawId: 10003,
+      values: {
+        [level]: number
+      },
+      negative: number < 0 ? true : false,
+    }
+    return effect;
+  }
+
+  // Heals Performed Pattern
+  // With this we specifically handle Secret of Life (6330), Reinvigoration (6926), Accumulation (7719)
+  // We specifically skip Precise (5076), Altruism (6828), Natural (6830), Firm Foot (6833), Anathar's Pact III (7071), Delay (7078), Lunatic (7254), Sentinel (7257), Engagement (7880)
+  const healsPerformedPattern = /(-?\d+)% Heals performed/;
+  const healsPerformedMatch = lineText.match(healsPerformedPattern);
+  statesToSkip = ['5076', '6828', '6830', '6833', '7071', '7078', '7254', '7257', '7880'];
+  if (healsPerformedMatch && !statesToSkip.includes(stateId)) {
+    const number = parseInt(healsPerformedMatch[1]);
+    let effect = {
+      id: 'healsPerformed',
+      rawId: 10002,
+      values: {
+        [level]: number
+      },
+      negative: number < 0 ? true : false,
+    }
+    return effect;
+  }
+
+  // Armor Given Pattern
+  // With this we specifically handle Secret of Rocky Envelope (6038)
+  // We specifically skip Precise (5076), Longevity (6709), Armor Length (6827), Abandon (6932), Anathar's Pact III (7071), Allocentrism (8131)
+  const armorGivenPattern = /(-?\d+)% Armor given/;
+  const armorGivenMatch = lineText.match(armorGivenPattern);
+  statesToSkip = ['5076', '6709', '6827', '6932', '7071', '8131'];
+  if (armorGivenMatch && !statesToSkip.includes(stateId)) {
+    const number = parseInt(armorGivenMatch[1]);
+    let effect = {
+      id: 'armorGiven',
+      rawId: 10000,
+      values: {
+        [level]: number
+      },
+      negative: number < 0 ? true : false,
+    }
+    return effect;
+  }
+
+  // % Level As Lock Pattern
+  // With this we specifically handle Secret of Brawling (7075), Interception (7865)
+  // We specifically skip Herculean Strength (5448), Berserk Lock (6012), Outrage (6705)
+  const levelAsLockPattern = /(-?\d+)% of level as Lock/;
+  const levelAsLockMatch = lineText.match(levelAsLockPattern);
+  statesToSkip = ['5448', '6012', '6705'];
+  if (levelAsLockMatch && !statesToSkip.includes(stateId)) {
+    const number = parseInt(levelAsLockMatch[1]);
+    let effect = {
+      id: 'lockFromLevel',
+      rawId: 10011,
+      values: {
+        [level]: number
+      },
+      negative: number < 0 ? true : false,
+    }
+    return effect;
+  }
+
+  // Damage Inflicted Pattern
+  // With this we specifically handle Secret of Excess (5250), Frenzy (5994), Theory of Matter (6000), Swiftness (6005), Fury (6027), Focalization (6034), Heavy Armor (7077), Excess II (7252)
+  // We specifically skip Ambush (5985), Distant Ambush (6016), Length (6036), Blocking Expert (6037), Lone Wolf (6329), Lock Steal (6817), Dodge Steal (6818), Social Relations (6823), Destruction (6825), Sensitivity (6826), Last Breath (6831), Delay (7078), Locking (7081), Featherweight (7088), Lunatic (7254), Art of Concealment (7711), Madness (7712), Bashell (7713), Light Strength (7859), Sparkle (7870), Embellishment (8132)
+  const damageInflictedPattern = /(-?\d+)% Damage/;
+  const damageInflictedMatch = lineText.match(damageInflictedPattern);
+  statesToSkip = ['5985', '6016', '6036', '6037', '6329', '6817', '6818', '6823', '6825', '6826', '6831', '7078', '7081', '7088', '7254', '7711', '7712', '7713', '7859', '7870', '8132'];
+  if (damageInflictedMatch && !statesToSkip.includes(stateId)) {
+    const number = parseInt(damageInflictedMatch[1]);
+    let effect = {
+      id: 'damageInflicted',
+      rawId: 1,
+      values: {
+        [level]: number
+      },
+      negative: number < 0 ? true : false,
+    }
+    return effect;
+  }
+
+  return null;
 }
 
 const mergeStateData = (existingData, newData) => {
@@ -916,6 +1110,29 @@ const mergeStateData = (existingData, newData) => {
       console.log('a line that doesnt exist??? uh oh')
     }
   })
+
+  if(newData.equipEffects) {
+    // console.log(existingData.equipEffects, newData.equipEffects)
+    // if the new data has equip effects
+    newData.equipEffects.forEach(newEffectData => {
+      // we first want to see if it already exist in the existing data
+      if(existingData.equipEffects === undefined) {
+        existingData.equipEffects = [];
+      }
+
+      let existingEffectData = existingData.equipEffects.find((effect) => effect.rawId === newEffectData.rawId);
+
+      if(existingEffectData) {
+        // if we have an existing effect, we want to marge them
+        let levelToAdd = Object.keys(newEffectData.values)[0];
+        existingEffectData.values[levelToAdd] = newEffectData.values[levelToAdd];
+      } else {
+        // otherwise we add it flat out
+        console.log('pushing new effect', newEffectData)
+        existingData.equipEffects.push(newEffectData)
+      }
+    });
+  }
 }
 
 const writeStateDataToFile = (jsonData) => {

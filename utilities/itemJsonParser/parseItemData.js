@@ -218,7 +218,7 @@ const writeItemDataToFile = (jsonData) => {
     if (err) {
       console.error('Error writing JSON to file:', err);
     } else {
-      //   console.log('JSON data has been written to', jsonFilePath);
+        console.log('JSON data has been written to', jsonFilePath);
     }
   });
 };
