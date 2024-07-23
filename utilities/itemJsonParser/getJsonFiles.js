@@ -22,7 +22,7 @@ const jsonFileNames = [
 // https://wakfu.cdn.ankama.com/gamedata/config.json
 // https://wakfu.cdn.ankama.com/gamedata/(version)/(type).json
 
-const jsonVersion = '1.83.1.21';
+const jsonVersion = '1.84.1.25';
 
 const checkCurrentVersion = async () => {
   let versionUrl = 'https://wakfu.cdn.ankama.com/gamedata/config.json'
@@ -31,7 +31,7 @@ const checkCurrentVersion = async () => {
   let json = JSON.parse(responseJson)
 
   if(json.version !== jsonVersion) {
-    console.log('new version needed', json.version)
+    console.log('new version needed', json.version, '. Update and run this again.')
     return true;
   } else {
     console.log('we have the current version')
