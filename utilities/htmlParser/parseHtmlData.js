@@ -717,7 +717,7 @@ HANDLED - Huppermage - Quadramental Absorption - 20 force of will
 ///////// End Spell Parsing Logic
 
 const stateData = [];
-const stateTranslationData = { en: {}, es: {}, fr: {} };
+const stateTranslationData = { en: {}, es: {}, fr: {}, pt: {} };
 
 const getHtmlStatesData = async () => {
   for (let stateIndex in statesEncyclopediaBreakdown) {
