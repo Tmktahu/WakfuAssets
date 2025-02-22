@@ -828,7 +828,7 @@ const getHtmlStatesData = async () => {
         let response = await fetch(baseLinkerUrl, requestOptions);
 
         let htmlText = await response.text();
-        console.log(htmlText);
+        // console.log(htmlText);
 
         if (htmlText.includes("403 ERROR")) {
           console.log("403 ERROR", baseLinkerUrl);
@@ -1255,5 +1255,5 @@ const writeStateTranslationDataToFile = (jsonData) => {
 // assembleSpellDefData(); // outputs the massive const we have up there into a usable format
 // processSpellData();
 
-// getHtmlStatesData();
-processStatesData();
+getHtmlStatesData();
+// processStatesData();
