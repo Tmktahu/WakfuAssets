@@ -989,6 +989,9 @@ const assembleStateData = (document, filePath, stateId, stateLevel) => {
       }
     }
 
+    // we need to make sure to escape any | characters
+    denumberedText = denumberedText.replaceAll("|", "{'|'}");
+
     // we finally store the translated text along with its translation ID
     stateTranslationData[currentLocale][`${stateId}_${index}`] = denumberedText;
     lineData.text = `${stateId}_${index}`; // this is a translation ID
@@ -1255,5 +1258,5 @@ const writeStateTranslationDataToFile = (jsonData) => {
 // assembleSpellDefData(); // outputs the massive const we have up there into a usable format
 // processSpellData();
 
-getHtmlStatesData();
-// processStatesData();
+// getHtmlStatesData();
+processStatesData();
