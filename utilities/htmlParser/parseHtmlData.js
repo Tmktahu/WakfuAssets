@@ -976,16 +976,29 @@ const assembleStateData = (document, filePath, stateId, stateLevel) => {
     }
 
     // Here we need to strip out the numbers, store them under keys, and replace the text with those keys for later insertion
-    let numberRegex = /(\d+.\d+|\d+)/g;
+    let numberRegex = /(\d+\.\d+|\d+)/g;
     let numberMatches = deLinkeredText.match(numberRegex);
     let denumberedText = deLinkeredText;
+
+    if (denumberedText.includes("for a hit given")) {
+      console.log(numberMatches);
+    }
 
     if (numberMatches) {
       for (let numIndex = 0; numIndex < numberMatches.length; numIndex++) {
         lineData[`num_${numIndex}`] = {
           [`level_${stateLevel}`]: parseFloat(numberMatches[numIndex]),
         };
-        denumberedText = denumberedText.replace(numberMatches[numIndex], `{num_${numIndex}}`);
+
+        const targetNumber = numberMatches[numIndex].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const regex = new RegExp(`(?<!num_)(?<=^|\\s|\\W)${targetNumber}`);
+
+        if (denumberedText.includes("for a hit given")) {
+          console.log(regex);
+          console.log(denumberedText.match(regex));
+        }
+
+        denumberedText = denumberedText.replace(regex, `{num_${numIndex}}`);
       }
     }
 
