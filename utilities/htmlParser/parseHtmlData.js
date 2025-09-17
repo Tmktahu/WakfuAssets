@@ -1271,5 +1271,5 @@ const writeStateTranslationDataToFile = (jsonData) => {
 // assembleSpellDefData(); // outputs the massive const we have up there into a usable format
 // processSpellData();
 
-// getHtmlStatesData();
-processStatesData();
+getHtmlStatesData();
+// processStatesData();
